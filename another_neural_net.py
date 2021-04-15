@@ -129,6 +129,7 @@ def resnet50(device):
         print("Hi")
         for inputs, labels in trainloader:
             steps += 1
+            print(labels)
             print(steps)
             inputs, labels = inputs.to(device), labels.to(device)
             optimizer.zero_grad()
@@ -162,9 +163,9 @@ def resnet50(device):
               f"Test accuracy: {accuracy / len(testloader):.3f}")
         running_loss = 0
         model.train()
-    print("Saving Model")
-    torch.save(model,
-               '/home/vasudev_sridhar007/project/Performance-Comparison-of-TensorFlow-PyTorch-and-their-Distributed-Counterparts/imagenette2/aerialmodel.pth')  #########NEED TO CHANGE THIS PATH ACC TO GCP DIRS
+    #print("Saving Model")
+    #torch.save(model,
+    #           '/home/vasudev_sridhar007/project/Performance-Comparison-of-TensorFlow-PyTorch-and-their-Distributed-Counterparts/imagenette2/aerialmodel.pth')  #########NEED TO CHANGE THIS PATH ACC TO GCP DIRS
 
     print("Training time per epoch is {} seconds".format(time.time() - t1))
 
@@ -176,9 +177,9 @@ def resnet50(device):
                                           ])
 
     # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = torch.load(
-        '/home/vasudev_sridhar007/project/Performance-Comparison-of-TensorFlow-PyTorch-and-their-Distributed-Counterparts/imagenette2/aerialmodel.pth')  #########NEED TO CHANGE THIS PATH ACC TO GCP DIRS
-    model.eval()
+    #model = torch.load(
+    #    '/home/vasudev_sridhar007/project/Performance-Comparison-of-TensorFlow-PyTorch-and-their-Distributed-Counterparts/imagenette2/aerialmodel.pth')  #########NEED TO CHANGE THIS PATH ACC TO GCP DIRS
+    #model.eval()
     model = model.to(device)
 
     def predict_image(image):
