@@ -115,10 +115,10 @@ def resnet50(device, trainloader, testloader):
     model = model.to(device)
 
     t1 = time.time()
-    epochs = 1
+    epochs = 3
     steps = 0
     running_loss = 0
-    print_every = 10
+    print_every = 1
     train_losses, test_losses = [], []
     for epoch in range(epochs):
         print("Hi")
@@ -263,12 +263,13 @@ def vgg16(device, trainloader, testloader):
     n_epochs_stop = 1
     min_val_loss = np.Inf
     epochs_no_improve = 0
-    print_every = 10
+    print_every = 1
+    epochs = 3
     running_loss = 0
     checkpoint_path = "/content/drive/MyDrive/Documents/imagenette2/vgg16model.pth"
     
     # Main loop
-    for epoch in range(1):
+    for epoch in range(epochs):
         # Initialize validation loss for epoch
         val_loss = 0
 
@@ -285,6 +286,7 @@ def vgg16(device, trainloader, testloader):
             optimizer.step()
             running_loss += loss.item()
 
+        accuracy = 0
         if epoch%print_every == 0:
           # Validation loop
           for data, targets in testloader:
@@ -299,7 +301,7 @@ def vgg16(device, trainloader, testloader):
               ###### added code by Vaibhav################
               ps = torch.exp(out)
               top_p, top_class = ps.topk(1, dim=1)
-              equals = top_class == labels.view(*top_class.shape)
+              equals = top_class == targets.view(*top_class.shape)
               accuracy += torch.mean(equals.type(torch.FloatTensor)).item()
               #################################
 
