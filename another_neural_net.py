@@ -306,7 +306,7 @@ def vgg16(device, trainloader, testloader):
                   
 
           # Average validation loss
-          val_loss = val_loss / len(trainloader)
+          #val_loss = val_loss / len(trainloader)
 
           final_model = model
           # If the validation loss is at a minimum
