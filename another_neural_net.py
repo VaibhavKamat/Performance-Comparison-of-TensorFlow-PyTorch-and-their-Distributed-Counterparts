@@ -9,7 +9,7 @@ import torch.nn.functional as F
 from torchvision import datasets, transforms
 from torch.utils.data.distributed import DistributedSampler
 from torch.utils.data import DataLoader
-
+from torch.autograd import Variable
 import os
 import numpy as np
 import glob
@@ -23,7 +23,7 @@ def get_image_paths(root):
   labels = []
 
   for dir in os.listdir(root):
-    os.chdir(root+'/'+dir)
+      os.chdir(root+'/'+dir)
     count += len(glob.glob('*.JPEG'))
     labels += [index] * len(glob.glob('*.JPEG'))
 
@@ -166,7 +166,6 @@ def resnet50(device, trainloader, testloader):
 
     ####
 
-    from torch.autograd import Variable
     test_transforms = transforms.Compose([transforms.Resize((224, 224)),
                                           transforms.ToTensor()
                                           ])
@@ -311,6 +310,10 @@ def vgg16(device, trainloader, testloader):
             model = final_model
     print("Training time per epoch is {} seconds".format(time.time() - t1))
 
+    test_transforms = transforms.Compose([transforms.Resize((224, 224)),
+                                          transforms.ToTensor()
+                                          ])
+
     def predict_image(image):
         image_tensor = test_transforms(image).float()
         image_tensor = image_tensor.unsqueeze_(0)
@@ -326,8 +329,7 @@ def vgg16(device, trainloader, testloader):
         indices = list(range(len(data)))
         np.random.shuffle(indices)
         idx = indices[:num]
-        from torch.utils.data.sampler import SubsetRandomSampler
-        sampler = SubsetRandomSampler(idx)
+        sampler = DistributedSampler(idx)
         loader = torch.utils.data.DataLoader(data,
                                              sampler=sampler, batch_size=num)
         dataiter = iter(loader)
@@ -355,7 +357,7 @@ root = '/home/vasudev_sridhar007/project/Performance-Comparison-of-TensorFlow-Py
 
 trainloader, testloader = load_split_train_test(data_dir, .2)
 
-resnet50(device, trainloader, testloader)
+#resnet50(device, trainloader, testloader)
 
 vgg16(device, trainloader, testloader)
 
