@@ -331,6 +331,7 @@ def vgg16(device, trainloader, testloader):
                 f"Train loss: {running_loss / print_every:.3f}.. "
                 f"Test loss: {val_loss / len(testloader):.3f}.. "
                 f"Test accuracy: {accuracy / len(testloader):.3f}")
+          running_loss = 0
           #################################
           
     print("Training time per epoch is {} seconds".format(time.time() - t1))
