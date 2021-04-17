@@ -264,6 +264,7 @@ def vgg16(device, trainloader, testloader):
     min_val_loss = np.Inf
     epochs_no_improve = 0
     print_every = 10
+    running_loss = 0
     checkpoint_path = "/content/drive/MyDrive/Documents/imagenette2/vgg16model.pth"
     
     # Main loop
@@ -279,17 +280,30 @@ def vgg16(device, trainloader, testloader):
             loss = criterion(out, targets)
             # Backpropagation
             loss.backward()
+            
             # Update model parameters
             optimizer.step()
+            running_loss += loss.item()
 
         if epoch%print_every == 0:
           # Validation loop
           for data, targets in testloader:
+
+              data, targets = data.to(device), targets.to(device) ###### added code by Vaibhav
               # Generate predictions
               out = model(data)
               # Calculate loss
               loss = criterion(out, targets)
-              val_loss += loss
+              val_loss += loss.item()
+
+              ###### added code by Vaibhav################
+              ps = torch.exp(out)
+              top_p, top_class = ps.topk(1, dim=1)
+              equals = top_class == labels.view(*top_class.shape)
+              accuracy += torch.mean(equals.type(torch.FloatTensor)).item()
+              #################################
+
+                  
 
           # Average validation loss
           val_loss = val_loss / len(trainloader)
@@ -311,6 +325,14 @@ def vgg16(device, trainloader, testloader):
                   # Load in the best model
                   # model = torch.load(checkpoint_path)
                   model = final_model
+
+          ###### added code by Vaibhav################
+          print(f"Epoch {epoch + 1}/{epochs}.. "
+                f"Train loss: {running_loss / print_every:.3f}.. "
+                f"Test loss: {val_loss / len(testloader):.3f}.. "
+                f"Test accuracy: {accuracy / len(testloader):.3f}")
+          #################################
+          
     print("Training time per epoch is {} seconds".format(time.time() - t1))
 
     test_transforms = transforms.Compose([transforms.Resize((224, 224)),
