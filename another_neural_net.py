@@ -23,7 +23,7 @@ def get_image_paths(root):
   labels = []
 
   for dir in os.listdir(root):
-      os.chdir(root+'/'+dir)
+    os.chdir(root+'/'+dir)
     count += len(glob.glob('*.JPEG'))
     labels += [index] * len(glob.glob('*.JPEG'))
 
