@@ -138,25 +138,26 @@ def resnet50(device, trainloader, testloader):
         test_loss = 0
         accuracy = 0
         model.eval()
-        with torch.no_grad():
+        if epoch%print_every==0:
+          with torch.no_grad():
 
-            for inputs, labels in testloader:
-                inputs, labels = inputs.to(device), labels.to(device)
-                logps = model.forward(inputs)
-                batch_loss = criterion(logps, labels)
-                test_loss += batch_loss.item()
+              for inputs, labels in testloader:
+                  inputs, labels = inputs.to(device), labels.to(device)
+                  logps = model.forward(inputs)
+                  batch_loss = criterion(logps, labels)
+                  test_loss += batch_loss.item()
 
-                ps = torch.exp(logps)
-                top_p, top_class = ps.topk(1, dim=1)
-                equals = top_class == labels.view(*top_class.shape)
-                accuracy += torch.mean(equals.type(torch.FloatTensor)).item()
-        train_losses.append(running_loss / len(trainloader))
-        test_losses.append(test_loss / len(testloader))
-        print(f"Epoch {epoch + 1}/{epochs}.. "
-              f"Train loss: {running_loss / print_every:.3f}.. "
-              f"Test loss: {test_loss / len(testloader):.3f}.. "
-              f"Test accuracy: {accuracy / len(testloader):.3f}")
-        running_loss = 0
+                  ps = torch.exp(logps)
+                  top_p, top_class = ps.topk(1, dim=1)
+                  equals = top_class == labels.view(*top_class.shape)
+                  accuracy += torch.mean(equals.type(torch.FloatTensor)).item()
+          train_losses.append(running_loss / len(trainloader))
+          test_losses.append(test_loss / len(testloader))
+          print(f"Epoch {epoch + 1}/{epochs}.. "
+                f"Train loss: {running_loss / print_every:.3f}.. "
+                f"Test loss: {test_loss / len(testloader):.3f}.. "
+                f"Test accuracy: {accuracy / len(testloader):.3f}")
+          running_loss = 0
         model.train()
     #print("Saving Model")
     #torch.save(model,
@@ -262,7 +263,9 @@ def vgg16(device, trainloader, testloader):
     n_epochs_stop = 1
     min_val_loss = np.Inf
     epochs_no_improve = 0
+    print_every = 10
     checkpoint_path = "/content/drive/MyDrive/Documents/imagenette2/vgg16model.pth"
+    
     # Main loop
     for epoch in range(1):
         # Initialize validation loss for epoch
@@ -279,35 +282,35 @@ def vgg16(device, trainloader, testloader):
             # Update model parameters
             optimizer.step()
 
-    # Validation loop
-    for data, targets in testloader:
-        # Generate predictions
-        out = model(data)
-        # Calculate loss
-        loss = criterion(out, targets)
-        val_loss += loss
+        if epoch%print_every == 0:
+          # Validation loop
+          for data, targets in testloader:
+              # Generate predictions
+              out = model(data)
+              # Calculate loss
+              loss = criterion(out, targets)
+              val_loss += loss
 
-    # Average validation loss
-    val_loss = val_loss / len(trainloader)
+          # Average validation loss
+          val_loss = val_loss / len(trainloader)
 
-    final_model = model
-    # If the validation loss is at a minimum
-    if val_loss < min_val_loss:
-        # Save the model
-        # torch.save(model, checkpoint_path)
-        final_model = model
-        epochs_no_improve = 0
-        min_val_loss = val_loss
+          final_model = model
+          # If the validation loss is at a minimum
+          if val_loss < min_val_loss:
+              # Save the model
+              # torch.save(model, checkpoint_path)
+              final_model = model
+              epochs_no_improve = 0
+              min_val_loss = val_loss
+          else:
+              epochs_no_improve += 1
+              # Check early stopping condition
+              if epochs_no_improve == n_epochs_stop:
+                  print('Early stopping!')
 
-    else:
-        epochs_no_improve += 1
-        # Check early stopping condition
-        if epochs_no_improve == n_epochs_stop:
-            print('Early stopping!')
-
-            # Load in the best model
-            # model = torch.load(checkpoint_path)
-            model = final_model
+                  # Load in the best model
+                  # model = torch.load(checkpoint_path)
+                  model = final_model
     print("Training time per epoch is {} seconds".format(time.time() - t1))
 
     test_transforms = transforms.Compose([transforms.Resize((224, 224)),
