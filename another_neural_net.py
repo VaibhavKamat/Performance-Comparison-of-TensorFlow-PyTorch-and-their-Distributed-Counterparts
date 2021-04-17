@@ -91,13 +91,8 @@ else:
     device = torch.device("cpu", args.local_rank)
     print('No GPU. switching to CPU')
 
-def resnet50(device):
+def resnet50(device, trainloader, testloader):
     model = models.resnet50(pretrained=True)
-
-    data_dir = '/home/vasudev_sridhar007/project/Performance-Comparison-of-TensorFlow-PyTorch-and-their-Distributed-Counterparts/imagenette2/train'
-    root = '/home/vasudev_sridhar007/project/Performance-Comparison-of-TensorFlow-PyTorch-and-their-Distributed-Counterparts/imagenette2/val'
-
-    trainloader, testloader = load_split_train_test(data_dir, .2)
 
     preprocess = transforms.Compose([
         #transforms.Resize(259),
@@ -221,7 +216,148 @@ def resnet50(device):
     # plt.show()
     print("Inference time is {} seconds".format(time.time() - t1))
 
-resnet50(device)
+def vgg16(device, trainloader, testloader):
+    # Image transformations
+    image_transforms = {
+        # Train uses data augmentation
+        'train':
+            transforms.Compose([
+                transforms.RandomResizedCrop(size=256, scale=(0.8, 1.0)),
+                transforms.RandomRotation(degrees=15),
+                transforms.ColorJitter(),
+                transforms.RandomHorizontalFlip(),
+                transforms.CenterCrop(size=224),  # Image net standards
+                transforms.ToTensor(),
+                transforms.Normalize([0.485, 0.456, 0.406],
+                                     [0.229, 0.224, 0.225])  # Imagenet standards
+            ]),
+        # Validation does not use augmentation
+        'valid':
+            transforms.Compose([
+                transforms.Resize(size=256),
+                transforms.CenterCrop(size=224),
+                transforms.ToTensor(),
+                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+            ]),
+    }
+
+    model = models.vgg16(pretrained=True)
+    # print(model)
+
+    for param in model.parameters():
+        param.requires_grad = False
+
+    model.classifier[6] = nn.Sequential(
+        nn.Linear(4096, 256),
+        nn.ReLU(),
+        nn.Dropout(0.4),
+        nn.Linear(256, 10),
+        nn.LogSoftmax(dim=1))
+
+    criterion = nn.NLLLoss()
+    optimizer = optim.Adam(model.parameters())
+    model.to(device)
+
+    t1 = time.time()
+    # Early stopping details
+    n_epochs_stop = 1
+    min_val_loss = np.Inf
+    epochs_no_improve = 0
+    checkpoint_path = "/content/drive/MyDrive/Documents/imagenette2/vgg16model.pth"
+    # Main loop
+    for epoch in range(1):
+        # Initialize validation loss for epoch
+        val_loss = 0
+
+        # Training loop
+        for data, targets in trainloader:
+            # Generate predictions
+            out = model(data)
+            # Calculate loss
+            loss = criterion(out, targets)
+            # Backpropagation
+            loss.backward()
+            # Update model parameters
+            optimizer.step()
+
+    # Validation loop
+    for data, targets in testloader:
+        # Generate predictions
+        out = model(data)
+        # Calculate loss
+        loss = criterion(out, targets)
+        val_loss += loss
+
+    # Average validation loss
+    val_loss = val_loss / len(trainloader)
+
+    final_model = model
+    # If the validation loss is at a minimum
+    if val_loss < min_val_loss:
+        # Save the model
+        # torch.save(model, checkpoint_path)
+        final_model = model
+        epochs_no_improve = 0
+        min_val_loss = val_loss
+
+    else:
+        epochs_no_improve += 1
+        # Check early stopping condition
+        if epochs_no_improve == n_epochs_stop:
+            print('Early stopping!')
+
+            # Load in the best model
+            # model = torch.load(checkpoint_path)
+            model = final_model
+    print("Training time per epoch is {} seconds".format(time.time() - t1))
+
+    def predict_image(image):
+        image_tensor = test_transforms(image).float()
+        image_tensor = image_tensor.unsqueeze_(0)
+        input = Variable(image_tensor)
+        input = input.to(device)
+        output = model(input)
+        index = output.data.cpu().numpy().argmax()
+        return index
+
+    def get_random_images(num):
+        data = datasets.ImageFolder(data_dir, transform=test_transforms)
+        classes = data.classes
+        indices = list(range(len(data)))
+        np.random.shuffle(indices)
+        idx = indices[:num]
+        from torch.utils.data.sampler import SubsetRandomSampler
+        sampler = SubsetRandomSampler(idx)
+        loader = torch.utils.data.DataLoader(data,
+                                             sampler=sampler, batch_size=num)
+        dataiter = iter(loader)
+        images, labels = dataiter.next()
+        return images, labels
+
+    t1 = time.time()
+    to_pil = transforms.ToPILImage()
+    images, labels = get_random_images(1000)
+    # fig=plt.figure(figsize=(10,10))
+    for ii in range(len(images)):
+        print(ii + 1)
+        image = to_pil(images[ii])
+        index = predict_image(image)
+        # sub = fig.add_subplot(1, len(images), ii+1)
+        res = int(labels[ii]) == index
+        # sub.set_title(str(trainloader.dataset.classes[index]) + ":" + str(res))
+        # plt.axis('off')
+        ##plt.imshow(image)
+    # plt.show()
+    print("Inference time is {} seconds".format(time.time() - t1))
+
+data_dir = '/home/vasudev_sridhar007/project/Performance-Comparison-of-TensorFlow-PyTorch-and-their-Distributed-Counterparts/imagenette2/train'
+root = '/home/vasudev_sridhar007/project/Performance-Comparison-of-TensorFlow-PyTorch-and-their-Distributed-Counterparts/imagenette2/val'
+
+trainloader, testloader = load_split_train_test(data_dir, .2)
+
+resnet50(device, trainloader, testloader)
+
+vgg16(device, trainloader, testloader)
 
 # python3 -m torch.distributed.launch --nproc_per_node=4 --nnodes=2 --node_rank=0 --master_addr="10.182.0.2" --master_port=1234 another_neural_net.py
 # python3 -m torch.distributed.launch --nproc_per_node=4 --nnodes=2 --node_rank=1 --master_addr="10.182.0.2" --master_port=1234 another_neural_net.py
