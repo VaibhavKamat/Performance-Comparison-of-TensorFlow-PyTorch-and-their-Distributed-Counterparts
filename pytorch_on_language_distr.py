@@ -12,21 +12,21 @@ Original file is located at
 import argparse
 import os
 import re
-from tqdm import tqdm
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 import torch
 # %matplotlib inline
 
-device='cuda' if torch.cuda.is_available() else 'cpu'
-#prase the local_rank argument from command line for the current process
+# prase the local_rank argument from command line for the current process
 parser = argparse.ArgumentParser()
 parser.add_argument("--local_rank", default=0, type=int)
 args = parser.parse_args()
 
-#setup the distributed backend for managing the distributed training
+# setup the distributed backend for managing the distributed training
 torch.distributed.init_process_group('gloo')
+
+device='cuda' if torch.cuda.is_available() else 'cpu'
+device = torch.device(device, args.local_rank)
 
 import re
 import os
@@ -65,15 +65,6 @@ labels=y_train
 test_sentences=test_text
 test_labels=y_test
 
-
-# Print the original sentence.
-print(' Original: ', sentences[0])
-
-# Print the sentence split into tokens.
-print('Tokenized: ', tokenizer.tokenize(sentences[0]))
-
-# Print the sentence mapped to token ids.
-print('Token IDs: ', tokenizer.convert_tokens_to_ids(tokenizer.tokenize(sentences[0])))
 
 MAX_LEN=128
 
@@ -140,7 +131,7 @@ from torch.utils.data import TensorDataset, DataLoader, RandomSampler, Sequentia
 # For fine-tuning BERT on a specific task, the authors recommend a batch size of
 # 16 or 32.
 
-batch_size = 64
+batch_size = 32
 
 # Create the DataLoader for our training set.
 train_data = TensorDataset(train_inputs, train_masks, train_labels)
@@ -226,8 +217,8 @@ torch.manual_seed(seed_val)
 torch.cuda.manual_seed_all(seed_val)
 
 model = model.to(device)
-model = torch.nn.parallel.DistributedDataParallel(model,  device_ids=[args.local_rank],
-                                                          output_device=args.local_rank)
+#model = torch.nn.parallel.DistributedDataParallel(model,  device_ids=[args.local_rank],
+#                                                          output_device=args.local_rank)
 # Store the average loss after each epoch so we can plot them.
 loss_values = []
 
@@ -251,7 +242,7 @@ for epoch_i in range(0, epochs):
     total_loss = 0
     model.train()
     for step, batch in enumerate(train_dataloader):
-
+        print("Printed batch")
         if step % 40 == 0 and not step == 0:
 
             elapsed = format_time(time.time() - t0)
@@ -261,7 +252,7 @@ for epoch_i in range(0, epochs):
         b_input_ids = batch[0].to(device)
         b_input_mask = batch[1].to(device)
         b_labels = batch[2].to(device)
-
+        
         model.zero_grad()        
         outputs = model(b_input_ids, 
                     token_type_ids=None, 
@@ -272,7 +263,7 @@ for epoch_i in range(0, epochs):
         # loss value out of the tuple.
         loss = outputs[0]
         total_loss += loss.item()
-
+        
         # Perform a backward pass to calculate the gradients.
         loss.backward()
 
@@ -281,6 +272,7 @@ for epoch_i in range(0, epochs):
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         optimizer.step()
         scheduler.step()
+        print("After steps")
 
     # Calculate the average loss over the training data.
     avg_train_loss = total_loss / len(train_dataloader)            
