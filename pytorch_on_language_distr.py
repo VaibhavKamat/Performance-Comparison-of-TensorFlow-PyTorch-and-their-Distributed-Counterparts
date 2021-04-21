@@ -172,7 +172,7 @@ optimizer = AdamW(model.parameters(),
 from transformers import get_linear_schedule_with_warmup
 
 # Number of training epochs (authors recommend between 2 and 4)
-epochs = 1
+epochs = 3
 
 # Total number of training steps is number of batches * number of epochs.
 total_steps = len(train_dataloader) * epochs
@@ -243,6 +243,7 @@ for epoch_i in range(0, epochs):
     model.train()
     for step, batch in enumerate(train_dataloader):
         print("Printed batch")
+        print(batch)
         if step % 40 == 0 and not step == 0:
 
             elapsed = format_time(time.time() - t0)
@@ -272,7 +273,6 @@ for epoch_i in range(0, epochs):
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         optimizer.step()
         scheduler.step()
-        print("After steps")
 
     # Calculate the average loss over the training data.
     avg_train_loss = total_loss / len(train_dataloader)            
